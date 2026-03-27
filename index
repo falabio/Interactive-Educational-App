@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Literacy Launchpad</title>
+    <style>
+        :root {
+            --vowel-red: #FF0000;
+            --consonant-blue: #0000FF;
+            --bg-light: #F8F9FA;
+            --success-green: #28A745;
+            --font-main: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background-color: var(--bg-light);
+            font-family: var(--font-main);
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* Progress Bar */
+        #top-nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            height: 80px;
+            background: #FFF;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 100;
+        }
+
+        #progress-container {
+            flex-grow: 1;
+            height: 30px;
+            background: #EEE;
+            border-radius: 15px;
+            margin: 0 40px;
+            overflow: hidden;
+        }
+
+        #progress-bar {
+            height: 100%;
+            width: 0%;
+            background: var(--success-green);
+            transition: width 0.5s ease;
+        }
+
+        #star-tracker {
+            display: flex;
+            gap: 15px;
+            margin-right: 40px;
+        }
+
+        .star {
+            width: 50px;
+            height: 50px;
+            background: #DDD;
+            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .star.filled {
+            background: #FFD700;
+            transform: scale(1.2);
+            filter: drop-shadow(0 0 10px #FFD700);
+        }
+
+        /* Main Stage */
+        #game-container {
+            margin-top: 100px;
+            height: calc(100vh - 100px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .task-card {
+            background: white;
+            padding: 40px;
+            border-radius: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            max-width: 90%;
+            min-width: 600px;
+        }
+
+        .emoji-display {
+            font-size: 150px;
+            margin-bottom: 20px;
+        }
+
+        .word-display {
+            font-size: 120px;
+            font-weight: bold;
+            letter-spacing: 15px;
+            margin: 20px 0;
+            min-height: 150px;
+        }
+
+        /* Buttons */
+        .btn-option {
+            min-width: 250px;
+            min-height: 120px;
+            margin: 20px;
+            font-size: 72px;
+            font-weight: bold;
+            border: 8px solid #333;
+            border-radius: 20px;
+            background: white;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .btn-option:active {
+            transform: scale(0.95);
+        }
+
+        .letter-bank {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 40px;
+        }
+
+        .letter-tile {
+            width: 120px;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 80px;
+            font-weight: bold;
+            border: 6px solid #333;
+            border-radius: 15px;
+            cursor: pointer;
+            background: white;
+        }
+
+        /* Letter Coloring */
+        .vowel { color: var(--vowel-red); }
+        .consonant { color: var(--consonant-blue); }
+
+        /* Break Screen */
+        #break-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            color: white;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        #timer-circle {
+            width: 200px;
+            height: 200px;
+            border: 15px solid #555;
+            border-top: 15px solid var(--success-green);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 80px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { 100% { border-top-color: var(--success-green); } }
+        
+        .sparkle {
+            position: absolute;
+            pointer-events: none;
+            width: 20px;
+            height: 20px;
+            background: gold;
+            border-radius: 50%;
+            animation: pop 0.6s ease-out forwards;
+        }
+
+        @keyframes pop {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(3); opacity: 0; }
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+            40% {transform: translateY(-30px);}
+            60% {transform: translateY(-15px);}
+        }
+
+        .animate-bounce { animation: bounce 0.6s; }
+
+        .hidden { display: none !important; }
+
+    </style>
+</head>
+<body>
+
+    <div id="top-nav">
+        <div id="progress-container">
+            <div id="progress-bar"></div>
+        </div>
+        <div id="star-tracker">
+            <div class="star" id="star-1"></div>
+            <div class="star" id="star-2"></div>
+            <div class="star" id="star-3"></div>
+            <div class="star" id="star-4"></div>
+        </div>
+    </div>
+
+    <div id="game-container">
+        <div class="task-card" id="task-card">
+            <div id="section-title" style="font-size: 32px; color: #666; margin-bottom: 10px;"></div>
+            <div class="emoji-display" id="main-emoji">🍎</div>
+            <div class="word-display" id="current-word-view"></div>
+            
+            <div id="interaction-area">
+                <!-- Content injected by JS -->
+            </div>
+        </div>
+    </div>
+
+    <div id="break-screen">
+        <h1 style="font-size: 80px;">Rest Your Eyes</h1>
+        <p style="font-size: 40px;">Breathe deeply and look away from the screen.</p>
+        <div id="timer-display" style="font-size: 120px; margin: 40px 0;">60</div>
+        <div id="timer-circle"></div>
+    </div>
+
+    <script>
+        // Data Configuration
+        const VOCAB = [
+            { w: "UP", e: "⬆️" }, { w: "IN", e: "📥" }, { w: "ON", e: "🔛" }, { w: "AT", e: "📍" },
+            { w: "IT", e: "📦" }, { w: "ME", e: "🙋" }, { w: "GO", e: "🏃" }, { w: "NO", e: "🚫" },
+            { w: "AM", e: "🆔" }, { w: "HE", e: "👦" }, { w: "CAT", e: "🐱" }, { w: "DOG", e: "🐶" },
+            { w: "HAT", e: "🎩" }, { w: "BAT", e: "🦇" }, { w: "BOX", e: "📦" }, { w: "BED", e: "🛏️" },
+            { w: "RED", e: "🟥" }, { w: "SUN", e: "☀️" }, { w: "CUP", e: "🥤" }, { w: "PIG", e: "🐷" },
+            { w: "MAP", e: "🗺️" }, { w: "PEN", e: "🖊️" }, { w: "BUS", e: "🚌" }, { w: "NET", e: "🕸️" },
+            { w: "POT", e: "🍯" }, { w: "FAN", e: "🌀" }, { w: "BAG", e: "🛍️" }, { w: "JET", e: "🛩️" },
+            { w: "JAM", e: "🍓" }, { w: "KEY", e: "🔑" }
+        ];
+
+        // App State
+        let state = {
+            totalTasks: 75,
+            currentTaskIndex: 0,
+            starsFilled: 0,
+            lastBreakTime: Date.now(),
+            section: 1 // 1: Match, 2: Blend, 3: Build
+        };
+
+        const VOWELS = ['A', 'E', 'I', 'O', 'U'];
+
+        // Persistence
+        function saveState() {
+            localStorage.setItem('literacyAppState', JSON.stringify(state));
+        }
+
+        function loadState() {
+            const saved = localStorage.getItem('literacyAppState');
+            if (saved) {
+                state = JSON.parse(saved);
+                state.lastBreakTime = Date.now(); // Reset timer on refresh to avoid immediate lock
+            }
+        }
+
+        // UI Helpers
+        const $ = (id) => document.getElementById(id);
+
+        function getColorClass(char) {
+            return VOWELS.includes(char.toUpperCase()) ? 'vowel' : 'consonant';
+        }
+
+        function renderWordStyled(word) {
+            return word.split('').map(char => `<span class="${getColorClass(char)}">${char}</span>`).join('');
+        }
+
+        function createSparkle(x, y) {
+            for(let i=0; i<8; i++) {
+                const s = document.createElement('div');
+                s.className = 'sparkle';
+                s.style.left = x + 'px';
+                s.style.top = y + 'px';
+                s.style.transform = `rotate(${i * 45}deg) translate(30px)`;
+                document.body.appendChild(s);
+                setTimeout(() => s.remove(), 600);
+            }
+        }
+
+        // Logic - Section 1: See & Match
+        function initSection1() {
+            const item = VOCAB[state.currentTaskIndex % VOCAB.length];
+            const decoy = VOCAB[(state.currentTaskIndex + 5) % VOCAB.length];
+            const options = [item.w, decoy.w].sort(() => Math.random() - 0.5);
+
+            $('section-title').innerText = "Look and Choose";
+            $('main-emoji').innerText = item.e;
+            $('current-word-view').innerHTML = "";
+            $('interaction-area').innerHTML = options.map(opt => 
+                `<button class="btn-option" onclick="handleChoice('${opt}', '${item.w}', event)">${renderWordStyled(opt)}</button>`
+            ).join('');
+        }
+
+        // Logic - Section 2: Visual Blending
+        let blendBuffer = [];
+        function initSection2() {
+            const item = VOCAB[state.currentTaskIndex % VOCAB.length];
+            blendBuffer = [];
+            
+            $('section-title').innerText = "Push the Letters";
+            $('main-emoji').innerText = item.e;
+            $('current-word-view').innerHTML = "_ ".repeat(item.w.length);
+            
+            const parts = item.w.split('');
+            $('interaction-area').innerHTML = `
+                <div class="letter-bank">
+                    ${parts.map((p, i) => `
+                        <button class="letter-tile animate-bounce" id="tile-${i}" onclick="handleBlend('${p}', ${i}, '${item.w}', event)">
+                            <span class="${getColorClass(p)}">${p}</span>
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // Logic - Section 3: Word Builder
+        let buildBuffer = "";
+        function initSection3() {
+            const item = VOCAB[state.currentTaskIndex % VOCAB.length];
+            buildBuffer = "";
+            
+            $('section-title').innerText = "Build the Word";
+            $('main-emoji').innerText = item.e;
+            $('current-word-view').innerHTML = "_ ".repeat(item.w.length);
+            
+            // Scramble word + add 1 random decoy
+            let letters = item.w.split('');
+            letters.push(String.fromCharCode(65 + Math.floor(Math.random() * 26)));
+            letters.sort(() => Math.random() - 0.5);
+
+            $('interaction-area').innerHTML = `
+                <div class="letter-bank">
+                    ${letters.map((l, i) => `
+                        <button class="letter-tile" onclick="handleBuild('${l}', '${item.w}', event)">
+                            <span class="${getColorClass(l)}">${l}</span>
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // Handlers
+        window.handleChoice = (choice, correct, event) => {
+            if (choice === correct) {
+                success(event);
+            } else {
+                event.target.style.borderColor = "red";
+                setTimeout(() => event.target.style.borderColor = "#333", 500);
+            }
+        }
+
+        window.handleBlend = (char, index, correct, event) => {
+            createSparkle(event.clientX, event.clientY);
+            blendBuffer.push(char);
+            $('tile-' + index).classList.add('hidden');
+            $('current-word-view').innerHTML = renderWordStyled(blendBuffer.join(''));
+            
+            if (blendBuffer.join('') === correct) {
+                setTimeout(success, 600);
+            }
+        }
+
+        window.handleBuild = (char, correct, event) => {
+            const nextIndex = buildBuffer.length;
+            if (char === correct[nextIndex]) {
+                createSparkle(event.clientX, event.clientY);
+                buildBuffer += char;
+                $('current-word-view').innerHTML = renderWordStyled(buildBuffer) + "_ ".repeat(correct.length - buildBuffer.length);
+                if (buildBuffer === correct) setTimeout(success, 600);
+            } else {
+                event.target.style.transform = "translateX(10px)";
+                setTimeout(() => event.target.style.transform = "translateX(0)", 100);
+            }
+        }
+
+        function success(event) {
+            if (event) createSparkle(event.clientX, event.clientY);
+            $('task-card').classList.add('animate-bounce');
+            
+            state.currentTaskIndex++;
+            updateProgress();
+            
+            if (state.currentTaskIndex < 25) state.section = 1;
+            else if (state.currentTaskIndex < 50) state.section = 2;
+            else state.section = 3;
+
+            saveState();
+
+            setTimeout(() => {
+                $('task-card').classList.remove('animate-bounce');
+                renderCurrentTask();
+            }, 600);
+        }
+
+        function updateProgress() {
+            const percent = (state.currentTaskIndex / state.totalTasks) * 100;
+            $('progress-bar').style.width = percent + '%';
+        }
+
+        function renderCurrentTask() {
+            if (state.currentTaskIndex >= state.totalTasks) {
+                $('task-card').innerHTML = `<h1 style="font-size:100px;">Great Job! 🌟</h1><p style="font-size:40px;">Lesson Complete.</p>`;
+                return;
+            }
+
+            if (state.section === 1) initSection1();
+            else if (state.section === 2) initSection2();
+            else initSection3();
+        }
+
+        // Timer Logic
+        function checkBreaks() {
+            const now = Date.now();
+            const elapsedMinutes = (now - state.lastBreakTime) / 60000;
+            
+            if (elapsedMinutes >= 15) {
+                startBreak();
+            }
+        }
+
+        function startBreak() {
+            const screen = $('break-screen');
+            screen.style.display = 'flex';
+            let timeLeft = 60;
+            
+            state.starsFilled++;
+            if (state.starsFilled <= 4) {
+                $(`star-${state.starsFilled}`).classList.add('filled');
+            }
+
+            const interval = setInterval(() => {
+                timeLeft--;
+                $('timer-display').innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    screen.style.display = 'none';
+                    state.lastBreakTime = Date.now();
+                    saveState();
+                }
+            }, 1000);
+        }
+
+        // Init
+        window.onload = () => {
+            loadState();
+            renderCurrentTask();
+            updateProgress();
+            
+            // Sync stars if returning
+            for(let i=1; i<=state.starsFilled; i++) {
+                $(`star-${i}`).classList.add('filled');
+            }
+
+            setInterval(checkBreaks, 10000); // Check for break every 10s
+        };
+
+    </script>
+</body>
+</html>
